@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Suivi de Paiement</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161920;
+    --surface2: #1e2230;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dim: rgba(201,168,76,0.15);
+    --green: #2ecc8e;
+    --green-dim: rgba(46,204,142,0.12);
+    --red: #e05c5c;
+    --text: #f0efe8;
+    --text2: #9a9890;
+    --text3: #5a5956;
+    --serif: 'DM Serif Display', serif;
+    --sans: 'DM Sans', sans-serif;
+    --r: 12px;
+    --r2: 18px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; font-size: 15px; overflow-x: hidden; }
+
+  /* ─── NAV ─── */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.9rem 1rem; border-bottom: 1px solid var(--border);
+    background: var(--surface); position: sticky; top: 0; z-index: 50;
+    gap: 8px;
+  }
+  .nav-logo { font-family: var(--serif); font-size: 1.15rem; color: var(--gold); letter-spacing: .02em; white-space: nowrap; flex-shrink: 0; }
+  .nav-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .nav-tabs {
+    display: flex; gap: 3px;
+    overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    flex: 1; justify-content: flex-end;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: var(--sans); font-size: 12px; font-weight: 500; transition: all .2s;
+    background: transparent; color: var(--text2); white-space: nowrap; flex-shrink: 0;
+    min-height: 36px; display: flex; align-items: center;
+  }
+  .tab-btn.active { background: var(--gold-dim); color: var(--gold); }
+  .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.05); color: var(--text); }
+
+  /* ─── VIEWS ─── */
+  .view { display: none; padding: 1.2rem; max-width: 960px; margin: 0 auto; padding-bottom: 2rem; }
+  .view.active { display: block; }
+
+  /* ─── HERO STATS ─── */
+  .hero { text-align: center; padding: 2rem 1rem 1.5rem; }
+  .hero-label { font-size: 11px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .5rem; }
+  .hero-amount { font-family: var(--serif); font-size: clamp(2.2rem, 10vw, 3.5rem); color: var(--text); line-height: 1; }
+  .hero-sub { font-size: 12px; color: var(--text2); margin-top: .5rem; line-height: 1.5; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 1.2rem 0; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 0.9rem 0.8rem;
+  }
+  .stat-card .s-label { font-size: 10px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-card .s-val { font-family: var(--serif); font-size: clamp(1.1rem, 4vw, 1.6rem); word-break: break-word; }
+  .stat-card .s-val.green { color: var(--green); }
+  .stat-card .s-val.gold { color: var(--gold); }
+  .stat-card .s-val.red { color: var(--red); }
+
+  /* ─── PROGRESS ─── */
+  .progress-section { margin-bottom: 1.5rem; }
+  .progress-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 8px; gap: 8px; }
+  .progress-header span { flex: 1; }
+  .progress-header span:last-child { text-align: right; }
+  .progress-track { height: 10px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .progress-fill {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, #c9a84c, #2ecc8e);
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* ─── WEEKS GRID ─── */
+  .section-head { font-size: 11px; color: var(--text3); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; font-weight: 500; }
+  .weeks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+
+  @media (max-width: 380px) {
+    .weeks-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .week-tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 10px 10px; cursor: pointer;
+    transition: border-color .2s, transform .15s;
+    position: relative; overflow: hidden; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .week-tile:active { transform: scale(0.97); }
+  .week-tile.paid { border-color: rgba(46,204,142,0.4); background: var(--green-dim); }
+  .week-tile.paid::after { content: '✓'; position: absolute; top: 6px; right: 8px; font-size: 10px; color: var(--green); font-weight: 600; }
+  .week-tile.late { border-color: rgba(224,92,92,0.35); background: rgba(224,92,92,0.06); }
+  .wt-num { font-size: 9px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 3px; }
+  .wt-amount { font-size: 12px; font-weight: 600; color: var(--text); }
+  .week-tile.paid .wt-amount { color: var(--green); }
+  .wt-date { font-size: 9px; color: var(--text3); margin-top: 3px; line-height: 1.3; }
+  .wt-cam { font-size: 9px; color: var(--gold); margin-top: 2px; }
+
+  /* ─── MODAL ─── */
+  .overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+    z-index: 200; align-items: flex-end; justify-content: center; padding: 0;
+  }
+  @media (min-width: 600px) {
+    .overlay { align-items: center; padding: 1rem; }
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--r2) var(--r2) 0 0; padding: 1.5rem 1.2rem 2rem;
+    width: 100%; max-width: 480px;
+    animation: slideUp .25s ease;
+    max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  @media (min-width: 600px) {
+    .modal { border-radius: var(--r2); padding: 2rem; animation: pop .2s ease; }
+  }
+  @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes pop { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* drag handle for bottom sheet */
+  .modal-handle {
+    width: 36px; height: 4px; background: var(--border2);
+    border-radius: 99px; margin: 0 auto 1.2rem; display: block;
+  }
+  @media (min-width: 600px) { .modal-handle { display: none; } }
+
+  .modal h3 { font-family: var(--serif); font-size: 1.2rem; margin-bottom: 1.2rem; color: var(--text); }
+  .form-group { margin-bottom: 0.9rem; }
+  .form-group label { font-size: 11px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; display: block; margin-bottom: 5px; }
+  .form-group input, .form-group textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border2);
+    border-radius: var(--r); padding: 10px 12px; color: var(--text);
+    font-family: var(--sans); font-size: 16px; /* 16px prevents iOS zoom */ outline: none;
+    transition: border-color .2s; -webkit-appearance: none;
+  }
+  .form-group input:focus, .form-group textarea:focus { border-color: var(--gold); }
+  .form-group textarea { resize: vertical; min-height: 60px; font-size: 16px; }
+
+  /* upload zone */
+  .upload-zone {
+    border: 1.5px dashed var(--border2); border-radius: var(--r);
+    padding: 1.2rem; text-align: center; cursor: pointer;
+    transition: border-color .2s, background .2s; position: relative;
+    min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .upload-zone:active { border-color: var(--gold); background: var(--gold-dim); }
+  .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-icon { font-size: 1.4rem; margin-bottom: 5px; }
+  .upload-text { font-size: 12px; color: var(--text2); }
+  .upload-text span { color: var(--gold); }
+  .preview-img {
+    max-width: 100%; border-radius: var(--r); margin-top: 10px;
+    border: 1px solid var(--border2); max-height: 160px; object-fit: cover;
+    display: none;
+  }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 1.2rem; }
+  .btn {
+    flex: 1; padding: 12px; border-radius: 10px; border: none;
+    font-family: var(--sans); font-size: 14px; font-weight: 500; cursor: pointer; transition: all .2s;
+    min-height: 46px; touch-action: manipulation;
+  }
+  .btn-confirm { background: var(--gold); color: #1a1400; }
+  .btn-confirm:active { background: var(--gold-light); }
+  .btn-cancel { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .btn-cancel:active { color: var(--text); }
+  .btn-delete {
+    background: rgba(224,92,92,0.15); color: var(--red); border: 1px solid rgba(224,92,92,0.3);
+    margin-top: 8px; width: 100%; padding: 10px; border-radius: 10px;
+    font-family: var(--sans); font-size: 13px; cursor: pointer; display: none;
+    transition: background .2s; min-height: 42px;
+  }
+  .btn-delete:active { background: rgba(224,92,92,0.25); }
+
+  /* ─── CAPTURE GALLERY ─── */
+  .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 10px; }
+  @media (max-width: 400px) {
+    .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .gallery-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r2); overflow: hidden;
+    cursor: pointer; transition: transform .15s, border-color .2s;
+  }
+  .gallery-card:active { transform: scale(0.98); border-color: var(--border2); }
+  .gallery-card img { width: 100%; height: 110px; object-fit: cover; display: block; background: var(--surface2); }
+  .gallery-card .gc-info { padding: 8px 10px; }
+  .gallery-card .gc-week { font-size: 10px; color: var(--gold); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .gallery-card .gc-amount { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 2px; }
+  .gallery-card .gc-date { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 13px; line-height: 1.6; }
+
+  /* lightbox */
+  .lightbox {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.92);
+    z-index: 300; align-items: center; justify-content: center; cursor: zoom-out; padding: 1rem;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 90vh; border-radius: var(--r); object-fit: contain; }
+
+  /* ─── TIMELINE ─── */
+  .timeline { position: relative; padding-left: 1.8rem; }
+  .timeline::before { content:''; position: absolute; left: 6px; top:0; bottom:0; width: 2px; background: var(--border2); border-radius: 2px; }
+  .tl-item { position: relative; margin-bottom: 1.2rem; }
+  .tl-dot {
+    position: absolute; left: -1.8rem; top: 3px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--green); border: 2px solid var(--bg);
+  }
+  .tl-dot.pending { background: var(--surface2); border-color: var(--border2); }
+  .tl-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 10px 12px;
+  }
+  .tl-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .tl-week { font-size: 12px; color: var(--text3); }
+  .tl-amount { font-size: 13px; font-weight: 600; color: var(--green); }
+  .tl-amount.pending { color: var(--text3); }
+  .tl-date { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .tl-note { font-size: 11px; color: var(--text2); margin-top: 3px; font-style: italic; }
+
+  /* ─── ADMIN badge ─── */
+  .admin-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--gold-dim); color: var(--gold);
+    font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 99px; border: 1px solid rgba(201,168,76,0.3);
+  }
+  .admin-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); display: inline-block; }
+
+  /* ─── LOGIN OVERLAY ─── */
+  .login-overlay {
+    position: fixed; inset: 0; background: var(--bg);
+    z-index: 999; display: flex; align-items: center; justify-content: center;
+    padding: 1.2rem;
+  }
+  .login-box {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--r2); padding: 2rem 1.5rem; width: 100%; max-width: 340px;
+    text-align: center; animation: pop .25s ease;
+  }
+  .login-box .login-logo { font-family: var(--serif); font-size: 1.5rem; color: var(--gold); margin-bottom: .3rem; }
+  .login-box .login-sub { font-size: 12px; color: var(--text3); margin-bottom: 1.8rem; }
+  .login-box input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border2);
+    border-radius: var(--r); padding: 12px 14px; color: var(--text);
+    font-family: var(--sans); font-size: 16px; outline: none;
+    text-align: center; letter-spacing: .1em; transition: border-color .2s;
+    margin-bottom: 10px; -webkit-appearance: none;
+  }
+  .login-box input:focus { border-color: var(--gold); }
+  .login-box .login-btn {
+    width: 100%; background: var(--gold); color: #1a1400;
+    border: none; border-radius: var(--r); padding: 12px;
+    font-family: var(--sans); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background .2s; min-height: 46px;
+  }
+  .login-box .login-btn:active { background: var(--gold-light); }
+  .login-error { font-size: 12px; color: var(--red); margin-top: 8px; min-height: 16px; }
+  .lock-icon { font-size: 1.8rem; margin-bottom: 1rem; }
+
+  /* logout btn */
+  .logout-btn {
+    font-size: 11px; color: var(--text3); background: none; border: none;
+    cursor: pointer; padding: 4px 6px; border-radius: 6px; font-family: var(--sans);
+    transition: color .2s; white-space: nowrap;
+  }
+  .logout-btn:active { color: var(--red); }
+
+  /* ─── GALLERY HEADER ─── */
+  .gallery-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; gap: 8px;
+  }
+  .gallery-header h2 { font-family: var(--serif); font-size: 1.3rem; }
+
+  /* hide admin tab when locked */
+  .locked .admin-tab { display: none !important; }
+
+  /* ─── SAFE AREA (iOS) ─── */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    nav { padding-top: max(0.9rem, env(safe-area-inset-top)); }
+    .modal { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+    .view { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Suivi Paiement</div>
+  <div class="nav-right">
+    <button class="logout-btn" id="logout-btn" onclick="logout()" style="display:none;">Déco.</button>
+    <div class="nav-tabs">
+      <button class="tab-btn active admin-tab" onclick="switchView('admin', event)">
+        <span class="admin-badge">Admin</span>
+      </button>
+      <button class="tab-btn" onclick="switchView('client', event)">Client</button>
+      <button class="tab-btn" onclick="switchView('gallery', event)">📷</button>
+      <button class="tab-btn" onclick="switchView('timeline', event)">Historique</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ VUE ADMIN ═══ -->
+<div id="view-admin" class="view active">
+  <div class="hero">
+    <div class="hero-label">Créance totale</div>
+    <div class="hero-amount">90 000 F</div>
+    <div class="hero-sub">Depuis Septembre 2025 · 5 000 F / semaine · Fin le 25 juillet 2026</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="s-label">Payé</div>
+      <div class="s-val green" id="a-paid">0 F</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Reste</div>
+      <div class="s-val red" id="a-remain">90 000 F</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Avance</div>
+      <div class="s-val gold" id="a-pct">0%</div>
+    </div>
+  </div>
+
+  <div class="progress-section">
+    <div class="progress-header">
+      <span id="a-weeks-done">0 / 18 semaines</span>
+      <span id="a-eta">—</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="a-bar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="section-head">Semaines — appuyer pour enregistrer un paiement</div>
+  <div class="weeks-grid" id="admin-grid"></div>
+</div>
+
+<!-- ═══ VUE CLIENT ═══ -->
+<div id="view-client" class="view">
+  <div class="hero">
+    <div class="hero-label">Votre solde restant</div>
+    <div class="hero-amount" id="c-remain">90 000 F</div>
+    <div class="hero-sub">Plan de remboursement · 5 000 F par semaine</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="s-label">Versé</div>
+      <div class="s-val green" id="c-paid">0 F</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Sem. OK</div>
+      <div class="s-val gold" id="c-weeks">0 / 18</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Prog.</div>
+      <div class="s-val gold" id="c-pct">0%</div>
+    </div>
+  </div>
+
+  <div class="progress-section">
+    <div class="progress-header">
+      <span>Progression</span>
+      <span id="c-eta">Fin estimée : —</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="c-bar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="section-head">Détail semaine par semaine</div>
+  <div class="weeks-grid" id="client-grid"></div>
+</div>
+
+<!-- ═══ GALERIE ═══ -->
+<div id="view-gallery" class="view">
+  <div class="gallery-header">
+    <h2>Captures de dépôt</h2>
+    <span id="g-count" style="font-size:12px; color:var(--text3);">0 capture</span>
+  </div>
+  <div class="gallery-grid" id="gallery-grid">
+    <div class="empty-state">Aucune capture pour l'instant.<br>Enregistrez un paiement pour en ajouter.</div>
+  </div>
+</div>
+
+<!-- ═══ HISTORIQUE ═══ -->
+<div id="view-timeline" class="view">
+  <div style="margin-bottom: 1.2rem;">
+    <h2 style="font-family:var(--serif); font-size:1.3rem;">Historique des versements</h2>
+  </div>
+  <div class="timeline" id="timeline-list"></div>
+</div>
+
+<!-- ═══ MODAL (bottom sheet mobile) ═══ -->
+<div class="overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <h3 id="m-title">Semaine 1</h3>
+    <div class="form-group">
+      <label>Montant reçu (F)</label>
+      <input type="number" id="m-amount" value="5000" min="0" inputmode="numeric" />
+    </div>
+    <div class="form-group">
+      <label>Date du versement</label>
+      <input type="date" id="m-date" />
+    </div>
+    <div class="form-group">
+      <label>Note</label>
+      <input type="text" id="m-note" placeholder="ex: MoMo, virement, espèces..." />
+    </div>
+    <div class="form-group">
+      <label>Capture / preuve de paiement</label>
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="m-file" accept="image/*" onchange="handleFile(event)" />
+        <div class="upload-icon">📎</div>
+        <div class="upload-text">Appuyer pour <span>ajouter une image</span></div>
+      </div>
+      <img id="m-preview" class="preview-img" alt="capture" />
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-cancel" onclick="closeModalDirect()">Annuler</button>
+      <button class="btn btn-confirm" onclick="savePayment()">Enregistrer</button>
+    </div>
+    <button class="btn-delete" id="m-delete" onclick="deletePayment()">Supprimer ce paiement</button>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('open')">
+  <img id="lb-img" src="" alt="" />
+</div>
+
+<!-- ═══ LOGIN OVERLAY ═══ -->
+<div class="login-overlay" id="login-overlay" style="display:none;">
+  <div class="login-box">
+    <div class="lock-icon">🔐</div>
+    <div class="login-logo">Suivi Paiement</div>
+    <div class="login-sub">Accès administrateur requis</div>
+    <input type="password" id="login-input" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')checkLogin()" autocomplete="current-password" />
+    <button class="login-btn" onclick="checkLogin()">Accéder</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<script>
+const TOTAL = 90000;
+const WEEKS = 18;
+const KEY = 'suivi_paiement_v1';
+const START_DATE = new Date('2026-03-23T00:00:00');
+
+let data = {};
+let currentWeek = null;
+
+function load() {
+  try { data = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e) { data = {}; }
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(data)); }
+
+function fmt(n) { return n.toLocaleString('fr-FR') + ' F'; }
+function fmtDate(s) {
+  if (!s) return '';
+  const d = new Date(s + 'T00:00:00');
+  return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+}
+function weekDeadline(weekNum) {
+  const d = new Date(START_DATE);
+  d.setDate(d.getDate() + (weekNum - 1) * 7 + 5);
+  return d;
+}
+function weekDeadlineStr(weekNum) {
+  return weekDeadline(weekNum).toISOString().split('T')[0];
+}
+function weekDeadlineFmt(weekNum) {
+  return weekDeadline(weekNum).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+}
+function isLate(weekNum) {
+  if (data[weekNum]) return false;
+  return new Date() > weekDeadline(weekNum);
+}
+
+function computeStats() {
+  let paid = 0, count = 0;
+  for (let i = 1; i <= WEEKS; i++) {
+    if (data[i]) { paid += (data[i].amount || 0); count++; }
+  }
+  return { paid, count, remain: TOTAL - paid, pct: Math.round((paid / TOTAL) * 100) };
+}
+
+function render() {
+  const s = computeStats();
+  const left = WEEKS - s.count;
+  const endDate = weekDeadlineFmt(WEEKS);
+
+  document.getElementById('a-paid').textContent = fmt(s.paid);
+  document.getElementById('a-remain').textContent = fmt(Math.max(0, s.remain));
+  document.getElementById('a-pct').textContent = s.pct + '%';
+  document.getElementById('a-bar').style.width = Math.min(100, s.pct) + '%';
+  document.getElementById('a-weeks-done').textContent = s.count + ' / 18 sem. payées';
+  document.getElementById('a-eta').textContent = left > 0 ? 'Fin le ' + endDate : '🎉 Soldé !';
+
+  document.getElementById('c-paid').textContent = fmt(s.paid);
+  document.getElementById('c-remain').textContent = fmt(Math.max(0, s.remain));
+  document.getElementById('c-weeks').textContent = s.count + ' / 18';
+  document.getElementById('c-pct').textContent = s.pct + '%';
+  document.getElementById('c-bar').style.width = Math.min(100, s.pct) + '%';
+  document.getElementById('c-eta').textContent = left > 0 ? 'Fin le ' + endDate : '✅ Complet !';
+
+  renderAdminGrid();
+  renderClientGrid();
+  renderGallery();
+  renderTimeline();
+}
+
+function renderAdminGrid() {
+  const g = document.getElementById('admin-grid');
+  g.innerHTML = '';
+  for (let i = 1; i <= WEEKS; i++) {
+    const p = data[i];
+    const late = isLate(i);
+    const t = document.createElement('div');
+    t.className = 'week-tile' + (p ? ' paid' : (late ? ' late' : ''));
+    t.innerHTML = `
+      <div class="wt-num">S${i} · ${weekDeadlineFmt(i)}</div>
+      <div class="wt-amount">${p ? fmt(p.amount) : '5 000 F'}</div>
+      ${p ? `<div class="wt-date">Reçu le ${fmtDate(p.date)}</div>` : `<div class="wt-date" style="color:${late ? 'var(--red)' : 'var(--text3)'}">${late ? '⚠ Retard' : 'Attente'}</div>`}
+      ${p && p.img ? `<div class="wt-cam">📷</div>` : ''}
+    `;
+    t.onclick = () => openModal(i);
+    g.appendChild(t);
+  }
+}
+
+function renderClientGrid() {
+  const g = document.getElementById('client-grid');
+  g.innerHTML = '';
+  for (let i = 1; i <= WEEKS; i++) {
+    const p = data[i];
+    const late = isLate(i);
+    const t = document.createElement('div');
+    t.className = 'week-tile' + (p ? ' paid' : (late ? ' late' : ''));
+    t.style.cursor = 'default';
+    t.innerHTML = `
+      <div class="wt-num">Sem. ${i}</div>
+      <div class="wt-amount">${p ? fmt(p.amount) : '5 000 F'}</div>
+      <div class="wt-date">${p ? 'Reçu le ' + fmtDate(p.date) : weekDeadlineFmt(i)}</div>
+      ${!p ? `<div class="wt-date" style="color:${late ? 'var(--red)' : 'var(--text3)'}">${late ? '⚠ Retard' : ''}</div>` : ''}
+    `;
+    g.appendChild(t);
+  }
+}
+
+function renderGallery() {
+  const g = document.getElementById('gallery-grid');
+  const entries = [];
+  for (let i = 1; i <= WEEKS; i++) {
+    if (data[i] && data[i].img) entries.push({ week: i, ...data[i] });
+  }
+  document.getElementById('g-count').textContent = entries.length + ' capture' + (entries.length !== 1 ? 's' : '');
+  if (entries.length === 0) {
+    g.innerHTML = '<div class="empty-state">Aucune capture pour l\'instant.<br>Enregistrez un paiement pour en ajouter.</div>';
+    return;
+  }
+  g.innerHTML = '';
+  entries.forEach(e => {
+    const c = document.createElement('div');
+    c.className = 'gallery-card';
+    c.innerHTML = `
+      <img src="${e.img}" alt="capture semaine ${e.week}" />
+      <div class="gc-info">
+        <div class="gc-week">Semaine ${e.week}</div>
+        <div class="gc-amount">${fmt(e.amount)}</div>
+        <div class="gc-date">${fmtDate(e.date)}</div>
+        ${e.note ? `<div class="tl-note">${e.note}</div>` : ''}
+      </div>
+    `;
+    c.onclick = () => openLightbox(e.img);
+    g.appendChild(c);
+  });
+}
+
+function renderTimeline() {
+  const list = document.getElementById('timeline-list');
+  list.innerHTML = '';
+  for (let i = 1; i <= WEEKS; i++) {
+    const p = data[i];
+    const item = document.createElement('div');
+    item.className = 'tl-item';
+    item.innerHTML = `
+      <div class="tl-dot${p ? '' : ' pending'}"></div>
+      <div class="tl-card">
+        <div class="tl-header">
+          <span class="tl-week">Semaine ${i}</span>
+          <span class="tl-amount${p ? '' : ' pending'}">${p ? fmt(p.amount) : '— en attente'}</span>
+        </div>
+        ${p ? `<div class="tl-date">${fmtDate(p.date)}</div>` : ''}
+        ${p && p.note ? `<div class="tl-note">"${p.note}"</div>` : ''}
+        ${p && p.img ? `<div style="margin-top:8px;"><img src="${p.img}" style="height:52px;border-radius:8px;cursor:zoom-in;" onclick="openLightbox('${p.img}')" /></div>` : ''}
+      </div>
+    `;
+    list.appendChild(item);
+  }
+}
+
+// ─── MODAL ───
+function openModal(week) {
+  if (!requireAuth()) return;
+  currentWeek = week;
+  const p = data[week];
+  document.getElementById('m-title').textContent = 'Semaine ' + week;
+  document.getElementById('m-amount').value = p ? p.amount : 5000;
+  document.getElementById('m-date').value = p ? p.date : weekDeadlineStr(week);
+  document.getElementById('m-note').value = p ? (p.note || '') : '';
+  const prev = document.getElementById('m-preview');
+  if (p && p.img) { prev.src = p.img; prev.style.display = 'block'; }
+  else { prev.src = ''; prev.style.display = 'none'; }
+  document.getElementById('m-file').value = '';
+  document.getElementById('m-delete').style.display = p ? 'block' : 'none';
+  document.getElementById('modal-overlay').classList.add('open');
+  // scroll to top of modal on mobile
+  setTimeout(() => document.querySelector('.modal').scrollTop = 0, 50);
+}
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  currentWeek = null;
+}
+function savePayment() {
+  const amount = parseInt(document.getElementById('m-amount').value) || 0;
+  const date = document.getElementById('m-date').value;
+  const note = document.getElementById('m-note').value.trim();
+  const imgSrc = document.getElementById('m-preview').src;
+  if (!date) { alert('Veuillez entrer une date.'); return; }
+  data[currentWeek] = { amount, date, note, img: imgSrc && imgSrc !== window.location.href ? imgSrc : (data[currentWeek]?.img || '') };
+  save(); render(); closeModalDirect();
+}
+function deletePayment() {
+  if (!confirm('Supprimer ce paiement ?')) return;
+  delete data[currentWeek];
+  save(); render(); closeModalDirect();
+}
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const prev = document.getElementById('m-preview');
+    prev.src = ev.target.result;
+    prev.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─── LIGHTBOX ───
+function openLightbox(src) {
+  document.getElementById('lb-img').src = src;
+  document.getElementById('lightbox').classList.add('open');
+}
+
+// ─── TABS ───
+function switchView(v, event) {
+  if (v === 'admin' && !requireAuth()) return;
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+  render();
+}
+
+// ─── AUTH ───
+const CORRECT = '1Truk2ouf';
+const AUTH_KEY = 'suivi_admin_auth';
+
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(31, h) + str.charCodeAt(i) | 0; }
+  return h.toString(16);
+}
+function isAuthenticated() {
+  return sessionStorage.getItem(AUTH_KEY) === simpleHash(CORRECT + 'ok');
+}
+function checkLogin() {
+  const val = document.getElementById('login-input').value;
+  if (val === CORRECT) {
+    sessionStorage.setItem(AUTH_KEY, simpleHash(CORRECT + 'ok'));
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('logout-btn').style.display = 'inline-block';
+    document.body.classList.remove('locked');
+  } else {
+    document.getElementById('login-error').textContent = 'Mot de passe incorrect.';
+    document.getElementById('login-input').value = '';
+    setTimeout(() => document.getElementById('login-error').textContent = '', 2500);
+  }
+}
+function logout() {
+  sessionStorage.removeItem(AUTH_KEY);
+  document.getElementById('logout-btn').style.display = 'none';
+  document.body.classList.add('locked');
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-client').classList.add('active');
+  document.querySelectorAll('.tab-btn')[1].classList.add('active');
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('login-input').value = '';
+}
+function requireAuth() {
+  if (!isAuthenticated()) {
+    document.getElementById('login-overlay').style.display = 'flex';
+    return false;
+  }
+  return true;
+}
+
+// ─── INIT ───
+load();
+if (isAuthenticated()) {
+  document.getElementById('logout-btn').style.display = 'inline-block';
+}
+document.getElementById('view-admin').classList.remove('active');
+document.getElementById('view-client').classList.add('active');
+document.querySelectorAll('.tab-btn')[0].classList.remove('active');
+document.querySelectorAll('.tab-btn')[1].classList.add('active');
+render();
+</script>
+</body>
+</html>
